@@ -1,23 +1,23 @@
 {
   "name": "webflux-proxy",
-  "version": "1.0.0",
+  "version": "0.1.0",
   "description": "Next.js proxy server for React to Spring WebFlux communication",
   "private": true,
   "scripts": {
-    "dev": "next dev -p 3001",
+    "dev": "node server.js",
     "build": "next build",
-    "start": "next start -p 3001",
+    "start": "next start",
     "lint": "next lint"
   },
   "dependencies": {
-    "next": "^14.0.0",
-    "react": "^18.0.0",
-    "react-dom": "^18.0.0",
-    "axios": "^1.6.0"
+    "next": "14.0.4",
+    "react": "^18",
+    "react-dom": "^18",
+    "ws": "^8.14.2"
   },
   "devDependencies": {
-    "eslint": "^8.0.0",
-    "eslint-config-next": "^14.0.0"
+    "eslint": "^8",
+    "eslint-config-next": "14.0.4"
   },
   "keywords": ["nextjs", "proxy", "cors", "react", "spring", "webflux"],
   "author": "",

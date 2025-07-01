@@ -218,6 +218,12 @@ body {
   background-clip: text;
 }
 
+/* 이모티콘 스타일 */
+.section-title span {
+  -webkit-text-fill-color: initial;
+  color: #667eea;
+}
+
 .section-subtitle {
   font-size: 1.1rem;
   color: #64748b;

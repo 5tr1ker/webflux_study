@@ -29,20 +29,100 @@ function App() {
   const [currentStock, setCurrentStock] = useState(null);
   const [stockInfoData, setStockInfoData] = useState([]);
 
+  // WebSocket 연결 상태
+  const [ws, setWs] = useState(null);
+
   // WebFlux 연결 핸들러
   const handleConnect = () => {
-    setIsConnected(!isConnected);
+    if (isConnected) {
+      // 연결 해제
+      if (ws) {
+        ws.close();
+        setWs(null);
+      }
+      setIsConnected(false);
+    } else {
+      // 연결 시작
+      try {
+        // 프록시 서버를 통해 WebSocket 연결
+        const websocket = new WebSocket('ws://localhost:3001');
+        
+        websocket.onopen = () => {
+          console.log('WebSocket connected to proxy server');
+          setIsConnected(true);
+          setWs(websocket);
+        };
+        
+        websocket.onmessage = (event) => {
+          console.log('=== React Client Received Message ===');
+          console.log('Raw event:', event);
+          console.log('Event data:', event.data);
+          console.log('Data type:', typeof event.data);
+          console.log('Data length:', event.data ? event.data.length : 'undefined');
+          console.log('=====================================');
+          
+          // 메시지 수 증가
+          setMessageCount(prev => prev + 1);
+          
+          // JSON 파싱 시도
+          try {
+            const result = parseStockString(event.data);
+            const newItem = {
+              date : result.date,
+              stock : result.stock,
+              volume : result.trade_data[0].volume,
+              price : result.trade_data[0].price,
+              time : result.trade_data[0].time
+            }
+         
+            setStockInfoData(prevData => {
+              const updatedData = [newItem, ...prevData];
+
+              return updatedData.slice(0, 20);
+            });
+            console.log('result : ' , result);
+          } catch (error) {
+            console.log('Data is not JSON format:', error.message);
+          }
+        };
+        
+        websocket.onclose = (event) => {
+          console.log('WebSocket disconnected');
+          console.log('Close event:', event);
+          console.log('Close code:', event.code);
+          console.log('Close reason:', event.reason);
+          setIsConnected(false);
+          setWs(null);
+        };
+        
+        websocket.onerror = (error) => {
+          console.error('WebSocket error:', error);
+          setIsConnected(false);
+          setWs(null);
+        };
+      } catch (error) {
+        console.error('Failed to connect:', error);
+        setIsConnected(false);
+      }
+    }
   };
+
+function parseStockString(stockString) {
+  const match = "{" + stockString.substring(6, stockString.length - 1) + "}";
+
+  const jsonStr = match
+  .replace(/=/g, ':')                     // = 를 : 로 변경
+  .replace(/([{,]\s*)(\w+)(?=:)/g, '$1"$2"')  // 키에 쌍따옴표 추가
+  .replace(/:([^,\[\{"][^,\]\}]+)/g, ': "$1"') // 값이 숫자나 객체/배열이 아닌 경우 문자열 처리
+  .replace(/'/g, '"');                   // 작은 따옴표를 쌍따옴표로
+
+  return JSON.parse(jsonStr);
+}
 
   // 랜덤 가격 생성
   const generateRandomPrice = (basePrice) => {
     const change = (Math.random() - 0.5) * 0.1; // ±5% 변동
     return Math.round(basePrice * (1 + change));
-  };
-
-  // 랜덤 거래량 생성
-  const generateRandomVolume = () => {
-    return Math.floor(Math.random() * 10000000) + 1000000;
   };
 
   // 가격 변화율 계산
@@ -52,30 +132,6 @@ function App() {
     return {
       value: change,
       percent: changePercent
-    };
-  };
-
-  // 주식 정보 아이템 생성
-  const createStockInfoItem = () => {
-    if (!currentStock) return null;
-
-    const stock = stockData[currentStock];
-    const price = generateRandomPrice(stock.basePrice);
-    const volume = generateRandomVolume();
-    const now = new Date();
-    const timeString = now.toLocaleTimeString('ko-KR', {
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit'
-    });
-
-    const change = calculateChange(price, stock.basePrice);
-    
-    return {
-      time: timeString,
-      price: price,
-      volume: volume,
-      change: change
     };
   };
 
@@ -100,36 +156,6 @@ function App() {
       symbol: stock.symbol
     };
   };
-
-  // WebFlux 데이터 시뮬레이션
-  useEffect(() => {
-    const interval = setInterval(() => {
-      if (isConnected) {
-        setMessageCount(prev => prev + Math.floor(Math.random() * 10));
-        setResponseTime(Math.floor(Math.random() * 100) + 10);
-      }
-    }, 2000);
-
-    return () => clearInterval(interval);
-  }, [isConnected]);
-
-  // 주식 데이터 업데이트
-  useEffect(() => {
-    if (!currentStock) return;
-
-    const interval = setInterval(() => {
-      const newItem = createStockInfoItem();
-      if (newItem) {
-        setStockInfoData(prevData => {
-          const updatedData = [newItem, ...prevData];
-          // 최대 20개 아이템만 유지
-          return updatedData.slice(0, 20);
-        });
-      }
-    }, 1000);
-
-    return () => clearInterval(interval);
-  }, [currentStock]);
 
   const currentStockInfo = getCurrentStockInfo();
 
@@ -174,8 +200,8 @@ function App() {
             <div className="metric-icon">📊</div>
             <div className="metric-content">
               <h3 className="metric-title">Messages Processed</h3>
-              <p className="metric-value">{messageCount.toLocaleString()}</p>
-              <p className="metric-change">+{Math.floor(Math.random() * 50)} last minute</p>
+              <p className="metric-value">{messageCount}</p>
+              <p className="metric-change">+1 last minute</p>
             </div>
           </div>
 
@@ -183,8 +209,8 @@ function App() {
             <div className="metric-icon">⚡</div>
             <div className="metric-content">
               <h3 className="metric-title">Response Time</h3>
-              <p className="metric-value">{responseTime}ms</p>
-              <p className="metric-change">Avg: {Math.floor(responseTime * 0.8)}ms</p>
+              <p className="metric-value">0 ms</p>
+              <p className="metric-change">Avg: 0 ms</p>
             </div>
           </div>
 
@@ -192,8 +218,8 @@ function App() {
             <div className="metric-icon">🔄</div>
             <div className="metric-content">
               <h3 className="metric-title">Active Connections</h3>
-              <p className="metric-value">{isConnected ? Math.floor(Math.random() * 100) + 50 : 0}</p>
-              <p className="metric-change">Peak: {Math.floor(Math.random() * 200) + 100}</p>
+              <p className="metric-value">{isConnected ? "Enabled" : "Disable"}</p>
+              <p className="metric-change">Peak: unknown</p>
             </div>
           </div>
 
@@ -201,8 +227,8 @@ function App() {
             <div className="metric-icon">📈</div>
             <div className="metric-content">
               <h3 className="metric-title">Throughput</h3>
-              <p className="metric-value">{Math.floor(Math.random() * 1000) + 500} req/s</p>
-              <p className="metric-change">+{Math.floor(Math.random() * 20)}% from yesterday</p>
+              <p className="metric-value">1 req/s</p>
+              <p className="metric-change">+0% from yesterday</p>
             </div>
           </div>
         </div>
@@ -210,7 +236,7 @@ function App() {
         {/* Stock Dashboard Section */}
         <div className="stock-dashboard-section">
           <div className="section-header">
-            <h2 className="section-title">📈 Stock Dashboard</h2>
+            <h2 className="section-title"><span>📈</span> Stock Dashboard</h2>
             <p className="section-subtitle">주식 종목을 선택하여 상세 정보를 확인하세요</p>
           </div>
 
@@ -243,26 +269,9 @@ function App() {
             <div className="stock-info-section">
               <div className="info-header">
                 <div className="selected-stock-name">{currentStockInfo.name}</div>
-                <div className="selected-stock-price">
-                  {currentStockInfo.symbol}{currentStockInfo.price.toLocaleString()}
-                </div>
-                <div 
-                  className="selected-stock-change"
-                  style={{
-                    color: currentStockInfo.change.percent > 0 ? '#10b981' : 
-                           currentStockInfo.change.percent < 0 ? '#ef4444' : 'rgba(255, 255, 255, 0.9)'
-                  }}
-                >
-                  {currentStockInfo.change.percent >= 0 ? '+' : ''}{currentStockInfo.change.percent.toFixed(1)}% 
-                  ({currentStockInfo.change.value >= 0 ? '+' : ''}{currentStockInfo.symbol}{Math.abs(currentStockInfo.change.value).toLocaleString()})
-                </div>
               </div>
               <div className="info-list">
                 {stockInfoData.map((item, index) => {
-                  const changeClass = item.change.percent > 0 ? 'change-positive' : 
-                                    item.change.percent < 0 ? 'change-negative' : 'change-neutral';
-                  
-                  const changeText = `${item.change.percent >= 0 ? '+' : ''}${item.change.percent.toFixed(1)}%`;
 
                   return (
                     <div key={index} className="info-item">
@@ -277,8 +286,8 @@ function App() {
                         <div className="info-label">거래량</div>
                         <div className="info-value">{item.volume.toLocaleString()}주</div>
                       </div>
-                      <div className={`info-change ${changeClass}`}>
-                        {changeText}
+                      <div className={`info-change change-positive`}>
+                        -
                       </div>
                     </div>
                   );

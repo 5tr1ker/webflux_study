@@ -13,18 +13,12 @@ import java.util.HashMap;
 @RequestMapping("/stock")
 public class StockController {
 
-    @GetMapping("/test")
-    public ResponseEntity<?> testApi() {
-        HashMap<String, Object> result = new HashMap<>();
+    @GetMapping("/health")
+    public Mono<? extends ResponseEntity<?>> healthCheck() {
+        HashMap<String, Object> body = new HashMap<>();
+        body.put("status" , "success");
 
-        result.put("message" , "success");
-
-        return ResponseEntity.ok(result);
-    }
-
-    @GetMapping
-    public Mono<? extends ResponseEntity<?>> getTestData() {
-        return Mono.just(ResponseEntity.status(HttpStatus.OK).body("TEST DATA"));
+        return Mono.just(ResponseEntity.status(HttpStatus.OK).body(body));
     }
 
 }

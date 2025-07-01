@@ -61,6 +61,10 @@ public class CustomWebSocketHandler implements WebSocketHandler {
         minute += 1;
         if (minute >= 60) {
             minute = 0;
+            hour += 1; // 분이 60이 넘으면 시를 1 증가
+            if (hour >= 24) {
+                hour = 0; // 시가 24가 되면 0으로 리셋
+            }
         }
 
         time = String.format("%02d:%02d", hour, minute);

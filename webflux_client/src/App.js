@@ -32,8 +32,8 @@ function App() {
   // WebSocket 연결 상태
   const [ws, setWs] = useState(null);
 
-  // WebFlux 연결 핸들러
-  const handleConnect = () => {
+  const disconnect = () => {
+    // 연결 해제
     if (isConnected) {
       // 연결 해제
       if (ws) {
@@ -41,7 +41,11 @@ function App() {
         setWs(null);
       }
       setIsConnected(false);
-    } else {
+    }
+  }
+
+  // WebFlux 연결 핸들러
+  const handleConnect = (stockKey) => {
       // 연결 시작
       try {
         // 프록시 서버를 통해 WebSocket 연결
@@ -49,6 +53,15 @@ function App() {
         
         websocket.onopen = () => {
           console.log('WebSocket connected to proxy server');
+
+          // Spring Boot 연결 완료 후 자동으로 초기 데이터 전송
+          const initialData = {
+            stock: stockKey === "apple" ? "애플" : stockKey === "tesla" ? "테슬라" : "삼성전자",
+            date: "2025-06-29",
+            time: "00:00"
+          };
+
+          websocket.send(JSON.stringify(initialData));
           setIsConnected(true);
           setWs(websocket);
         };
@@ -104,7 +117,6 @@ function App() {
         console.error('Failed to connect:', error);
         setIsConnected(false);
       }
-    }
   };
 
 function parseStockString(stockString) {
@@ -139,6 +151,19 @@ function parseStockString(stockString) {
   const handleStockSelect = (stockKey) => {
     setCurrentStock(stockKey);
     setStockInfoData([]); // 정보 초기화
+    setMessageCount(0);
+
+    // 연결 해제
+    if (isConnected) {
+      // 연결 해제
+      if (ws) {
+        ws.close();
+        setWs(null);
+      }
+      setIsConnected(false);
+    }
+
+    handleConnect(stockKey);
   };
 
   // 현재 선택된 주식 정보 계산
@@ -188,7 +213,7 @@ function parseStockString(stockString) {
           </p>
           <button 
             className={`connect-btn ${isConnected ? 'disconnect' : 'connect'}`}
-            onClick={handleConnect}
+            onClick={() => alert("주식 종목을 눌러주세요.")}
           >
             {isConnected ? 'Disconnect' : 'Connect to Server'}
           </button>
@@ -275,6 +300,12 @@ function parseStockString(stockString) {
 
                   return (
                     <div key={index} className="info-item">
+                      <div className="info-content">
+                      <div className="info-label">종목</div>
+                        <div className="info-value change-negative">
+                          {item.stock}  
+                        </div>
+                      </div>
                       <div className="info-content">
                         <div className="info-label">주가</div>
                         <div className="info-value">

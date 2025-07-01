@@ -31,18 +31,10 @@ app.prepare().then(() => {
     // Spring Boot 서버의 /stock/connect 엔드포인트로 연결
     const springWs = new WebSocket('ws://localhost:8080/stock/connect');
     
-    springWs.on('open', () => {
+    springWs.on('open', (message) => {
       console.log('Connected to Spring Boot WebSocket at /stock/connect');
+      console.log(message);
       
-      // Spring Boot 연결 완료 후 자동으로 초기 데이터 전송
-      const initialData = {
-        stock: "삼성전자",
-        date: "2025-06-29",
-        time: "04:24"
-      };
-      
-      console.log('Sending initial data to Spring Boot:', JSON.stringify(initialData));
-      springWs.send(JSON.stringify(initialData));
       console.log('Initial data sent successfully!');
     });
     

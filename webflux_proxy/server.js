@@ -8,6 +8,8 @@ const dev = process.env.NODE_ENV !== 'production';
 const app = next({ dev });
 const handle = app.getRequestHandler();
 
+const messageQueue = [];
+
 const PORT = 3001;
 
 app.prepare().then(() => {
@@ -31,20 +33,31 @@ app.prepare().then(() => {
     // Spring Boot 서버의 /stock/connect 엔드포인트로 연결
     const springWs = new WebSocket('ws://localhost:8080/stock/connect');
     
-    springWs.on('open', (message) => {
-      console.log('Connected to Spring Boot WebSocket at /stock/connect');
-      console.log(message);
-      
-      console.log('Initial data sent successfully!');
-    });
+    // springWs.on('open', () => {
+    //   console.log('Connected to Spring Boot WebSocket at /stock/connect');
+
+    //   console.log('Initial data sent successfully!');
+    // });
     
     // 클라이언트 → Spring 서버
     ws.on('message', (message) => {
-          console.log('Client → Spring:', message.toString());
-        if (springWs.readyState === WebSocket.OPEN) {
-          springWs.send(message);
-          console.log("Client message forwarded to Spring!");
+        console.log('Client → Spring:', message.toString());
+        if (springWs.readyState === WebSocket.CONNECTING) {
+          console.log("아직 연결중.. 큐에 삽입");
+          messageQueue.push(message);
         }
+
+        if (springWs.readyState === WebSocket.OPEN) {
+          console.log("Client message forwarded to Spring!");
+          springWs.send(message);
+        }
+    });
+
+    springWs.on('open', () => {
+    while (messageQueue.length > 0) {
+        const queuedMessage = messageQueue.shift();
+        springWs.send(queuedMessage);
+    }
     });
     
     // Spring 서버 → 클라이언트

@@ -1,11 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import { useState } from 'react';
 import './App.css';
 
 function App() {
   // WebFlux 연결 상태
   const [isConnected, setIsConnected] = useState(false);
   const [messageCount, setMessageCount] = useState(0);
-  const [responseTime, setResponseTime] = useState(0);
 
   // 주식 데이터 시뮬레이션
   const stockData = {

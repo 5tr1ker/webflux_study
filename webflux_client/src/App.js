@@ -33,6 +33,12 @@ function App() {
   const [ws, setWs] = useState(null);
 
   const disconnect = () => {
+    if(!isConnected) {
+      alert("종목을 선택해주세요.");
+
+      return;
+    }
+    alert("연결이 해제되었습니다.");
     // 연결 해제
     if (isConnected) {
       // 연결 해제
@@ -213,7 +219,7 @@ function parseStockString(stockString) {
           </p>
           <button 
             className={`connect-btn ${isConnected ? 'disconnect' : 'connect'}`}
-            onClick={() => alert("주식 종목을 눌러주세요.")}
+            onClick={() => disconnect()}
           >
             {isConnected ? 'Disconnect' : 'Connect to Server'}
           </button>
